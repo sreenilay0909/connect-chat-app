@@ -1,0 +1,9 @@
+
+{
+  "name": "Connect - Real-time Messaging",
+  "description": "A sophisticated email-based messaging platform with global discovery and AI integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

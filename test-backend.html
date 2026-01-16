@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Test</title>
+</head>
+<body>
+    <h1>MongoDB Backend Test</h1>
+    <div id="status">Testing...</div>
+    <div id="result"></div>
+    
+    <h2>Actions:</h2>
+    <button onclick="clearCache()">Clear LocalStorage Cache</button>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testRegister()">Test User Registration</button>
+    <button onclick="getUsers()">Get All Users</button>
+    
+    <h2>Results:</h2>
+    <pre id="output"></pre>
+
+    <script>
+        const BASE_URL = 'http://localhost:3000';
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+        
+        function clearCache() {
+            localStorage.clear();
+            log('✅ LocalStorage cleared!');
+            log('Now refresh your main app (localhost:3002)');
+        }
+        
+        async function testHealth() {
+            try {
+                log('\n🔍 Testing health endpoint...');
+                const response = await fetch(`${BASE_URL}/health`);
+                const data = await response.json();
+                log('✅ Health check successful!');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Health check failed: ' + error.message);
+            }
+        }
+        
+        async function testRegister() {
+            try {
+                log('\n🔍 Testing user registration...');
+                const userData = {
+                    username: 'Test User ' + Date.now(),
+                    email: 'test' + Date.now() + '@example.com'
+                };
+                
+                const response = await fetch(`${BASE_URL}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                
+                const data = await response.json();
+                log('✅ User registration successful!');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ User registration failed: ' + error.message);
+            }
+        }
+        
+        async function getUsers() {
+            try {
+                log('\n🔍 Getting all users...');
+                const response = await fetch(`${BASE_URL}/users`);
+                const data = await response.json();
+                log('✅ Got users!');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Get users failed: ' + error.message);
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = async () => {
+            log('🚀 Starting backend tests...\n');
+            await testHealth();
+            document.getElementById('status').textContent = 'Ready!';
+        };
+    </script>
+</body>
+</html>
