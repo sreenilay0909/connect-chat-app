@@ -113,24 +113,39 @@ export class GroupModel {
 
     async initializeCollection(): Promise<void> {
         const db = getDatabase();
-        const collections = await db.listCollections({ name: 'groups' }).toArray();
+        const isProduction = process.env.NODE_ENV === 'production';
 
-        if (collections.length === 0) {
-            await db.createCollection('groups', {
-                validator: {
-                    $jsonSchema: {
-                        bsonType: 'object',
-                        required: ['name', 'adminId', 'memberIds', 'createdAt'],
-                        properties: {
-                            name: { bsonType: 'string' },
-                            adminId: { bsonType: 'string' },
-                            memberIds: { bsonType: 'array', items: { bsonType: 'string' } },
-                            createdAt: { bsonType: 'number' }
+        // Skip validation schema in production (MongoDB Atlas free tier doesn't allow collMod)
+        if (!isProduction) {
+            const collections = await db.listCollections({ name: 'groups' }).toArray();
+
+            if (collections.length === 0) {
+                await db.createCollection('groups', {
+                    validator: {
+                        $jsonSchema: {
+                            bsonType: 'object',
+                            required: ['name', 'adminId', 'memberIds', 'createdAt'],
+                            properties: {
+                                name: { bsonType: 'string' },
+                                adminId: { bsonType: 'string' },
+                                memberIds: { bsonType: 'array', items: { bsonType: 'string' } },
+                                createdAt: { bsonType: 'number' }
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
         }
-        console.log('[DB] Group collection initialized');
+
+        // Create indexes (these are allowed in Atlas free tier)
+        try {
+            await this.collection.createIndex({ adminId: 1 });
+            await this.collection.createIndex({ memberIds: 1 });
+            await this.collection.createIndex({ createdAt: -1 });
+        } catch (error) {
+            console.log('[DB] Warning: Could not create some indexes:', error);
+        }
+
+        console.log('[DB] Group collection initialized with indexes');
     }
 }

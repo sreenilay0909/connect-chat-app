@@ -178,56 +178,65 @@ export class UserModel {
    */
   async initializeCollection(): Promise<void> {
     const db = getDatabase();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Create collection with validation if it doesn't exist
-    const collections = await db.listCollections({ name: 'users' }).toArray();
+    // Skip validation schema in production (MongoDB Atlas free tier doesn't allow collMod)
+    if (!isProduction) {
+      // Create collection with validation if it doesn't exist
+      const collections = await db.listCollections({ name: 'users' }).toArray();
 
-    if (collections.length === 0) {
-      await db.createCollection('users', {
-        validator: {
-          $jsonSchema: {
-            bsonType: 'object',
-            required: ['username', 'email', 'avatar', 'status', 'lastSeen'],
-            properties: {
-              username: {
-                bsonType: 'string',
-                minLength: 3,
-                maxLength: 50,
-                description: 'Username must be a string between 3 and 50 characters'
-              },
-              email: {
-                bsonType: 'string',
-                pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-                description: 'Email must be a valid email address'
-              },
-              avatar: {
-                bsonType: 'string',
-                pattern: '^https?://',
-                description: 'Avatar must be a valid URL'
-              },
-              status: {
-                bsonType: 'string',
-                maxLength: 200,
-                description: 'Status must be a string with max 200 characters'
-              },
-              lastSeen: {
-                bsonType: 'number',
-                minimum: 0,
-                description: 'LastSeen must be a positive number (Unix timestamp)'
+      if (collections.length === 0) {
+        await db.createCollection('users', {
+          validator: {
+            $jsonSchema: {
+              bsonType: 'object',
+              required: ['username', 'email', 'avatar', 'status', 'lastSeen'],
+              properties: {
+                username: {
+                  bsonType: 'string',
+                  minLength: 3,
+                  maxLength: 50,
+                  description: 'Username must be a string between 3 and 50 characters'
+                },
+                email: {
+                  bsonType: 'string',
+                  pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+                  description: 'Email must be a valid email address'
+                },
+                avatar: {
+                  bsonType: 'string',
+                  pattern: '^https?://',
+                  description: 'Avatar must be a valid URL'
+                },
+                status: {
+                  bsonType: 'string',
+                  maxLength: 200,
+                  description: 'Status must be a string with max 200 characters'
+                },
+                lastSeen: {
+                  bsonType: 'number',
+                  minimum: 0,
+                  description: 'LastSeen must be a positive number (Unix timestamp)'
+                }
               }
             }
           }
-        }
-      });
+        });
+      }
     }
 
-    // Create unique index on email
-    await this.collection.createIndex({ email: 1 }, { unique: true });
+    // Create indexes (these are allowed in Atlas free tier)
+    try {
+      // Create unique index on email
+      await this.collection.createIndex({ email: 1 }, { unique: true });
 
-    // Create index on lastSeen for sorting
-    await this.collection.createIndex({ lastSeen: -1 });
+      // Create index on lastSeen for sorting
+      await this.collection.createIndex({ lastSeen: -1 });
+    } catch (error) {
+      console.log('[DB] Warning: Could not create some indexes:', error);
+    }
 
-    console.log('[DB] User collection initialized with validation and indexes');
+    console.log('[DB] User collection initialized with indexes');
   }
 
   /**

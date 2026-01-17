@@ -207,88 +207,100 @@ export class MessageModel {
    */
   async initializeCollection(): Promise<void> {
     const db = getDatabase();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Create collection with validation if it doesn't exist
-    const collections = await db.listCollections({ name: 'messages' }).toArray();
+    // Skip validation schema in production (MongoDB Atlas free tier doesn't allow collMod)
+    if (!isProduction) {
+      // Create collection with validation if it doesn't exist
+      const collections = await db.listCollections({ name: 'messages' }).toArray();
 
-    const validationSchema = {
-      $jsonSchema: {
-        bsonType: 'object',
-        required: ['senderId', 'receiverId', 'type', 'timestamp', 'status'],
-        properties: {
-          senderId: {
-            bsonType: 'string',
-            description: 'SenderId must be a string'
-          },
-          receiverId: {
-            bsonType: 'string',
-            description: 'ReceiverId must be a string'
-          },
-          text: {
-            bsonType: 'string',
-            maxLength: 5000,
-            description: 'Text must be a string with max 5000 characters'
-          },
-          imageUrl: {
-            bsonType: 'string',
-            description: 'ImageUrl must be a string (data URL or http URL)'
-          },
-          audioUrl: {
-            bsonType: 'string',
-            description: 'AudioUrl must be a string (data URL or http URL)'
-          },
-          fileUrl: {
-            bsonType: 'string',
-            description: 'FileUrl must be a string (data URL or http URL)'
-          },
-          fileName: {
-            bsonType: 'string',
-            description: 'FileName must be a string'
-          },
-          fileType: {
-            bsonType: 'string',
-            description: 'FileType must be a string (MIME type)'
-          },
-          type: {
-            bsonType: 'string',
-            enum: ['text', 'image', 'audio', 'file'],
-            description: 'Type must be text, image, audio, or file'
-          },
-          timestamp: {
-            bsonType: 'number',
-            minimum: 0,
-            description: 'Timestamp must be a positive number (Unix timestamp)'
-          },
-          status: {
-            bsonType: 'string',
-            enum: ['sent', 'delivered', 'read'],
-            description: 'Status must be sent, delivered, or read'
-          },
-          groupId: {
-            bsonType: 'string',
-            description: 'GroupId must be a string (optional)'
+      const validationSchema = {
+        $jsonSchema: {
+          bsonType: 'object',
+          required: ['senderId', 'receiverId', 'type', 'timestamp', 'status'],
+          properties: {
+            senderId: {
+              bsonType: 'string',
+              description: 'SenderId must be a string'
+            },
+            receiverId: {
+              bsonType: 'string',
+              description: 'ReceiverId must be a string'
+            },
+            text: {
+              bsonType: 'string',
+              maxLength: 5000,
+              description: 'Text must be a string with max 5000 characters'
+            },
+            imageUrl: {
+              bsonType: 'string',
+              description: 'ImageUrl must be a string (data URL or http URL)'
+            },
+            audioUrl: {
+              bsonType: 'string',
+              description: 'AudioUrl must be a string (data URL or http URL)'
+            },
+            fileUrl: {
+              bsonType: 'string',
+              description: 'FileUrl must be a string (data URL or http URL)'
+            },
+            fileName: {
+              bsonType: 'string',
+              description: 'FileName must be a string'
+            },
+            fileType: {
+              bsonType: 'string',
+              description: 'FileType must be a string (MIME type)'
+            },
+            type: {
+              bsonType: 'string',
+              enum: ['text', 'image', 'audio', 'file'],
+              description: 'Type must be text, image, audio, or file'
+            },
+            timestamp: {
+              bsonType: 'number',
+              minimum: 0,
+              description: 'Timestamp must be a positive number (Unix timestamp)'
+            },
+            status: {
+              bsonType: 'string',
+              enum: ['sent', 'delivered', 'read'],
+              description: 'Status must be sent, delivered, or read'
+            },
+            groupId: {
+              bsonType: 'string',
+              description: 'GroupId must be a string (optional)'
+            }
           }
         }
-      }
-    };
+      };
 
-    if (collections.length === 0) {
-      await db.createCollection('messages', {
-        validator: validationSchema
-      });
-    } else {
-      // Update validation for existing collection
-      await db.command({
-        collMod: 'messages',
-        validator: validationSchema
-      });
+      if (collections.length === 0) {
+        await db.createCollection('messages', {
+          validator: validationSchema
+        });
+      } else {
+        // Update validation for existing collection
+        try {
+          await db.command({
+            collMod: 'messages',
+            validator: validationSchema
+          });
+        } catch (error) {
+          console.log('[DB] Warning: Could not update validation schema (likely Atlas free tier limitation)');
+        }
+      }
     }
 
-    // Create compound indexes for efficient queries
-    await this.collection.createIndex({ senderId: 1, receiverId: 1, timestamp: 1 });
-    await this.collection.createIndex({ receiverId: 1, senderId: 1, timestamp: 1 });
-    await this.collection.createIndex({ timestamp: -1 });
+    // Create compound indexes for efficient queries (these are allowed in Atlas free tier)
+    try {
+      await this.collection.createIndex({ senderId: 1, receiverId: 1, timestamp: 1 });
+      await this.collection.createIndex({ receiverId: 1, senderId: 1, timestamp: 1 });
+      await this.collection.createIndex({ timestamp: -1 });
+    } catch (error) {
+      console.log('[DB] Warning: Could not create some indexes:', error);
+    }
 
-    console.log('[DB] Message collection initialized with validation and indexes');
+    console.log('[DB] Message collection initialized with indexes');
   }
 }
