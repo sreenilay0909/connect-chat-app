@@ -6,7 +6,7 @@ import { User, Message, StatusUpdate, Group } from '../types';
  * Defaults to 'http://localhost:3001' for local development with MongoDB backend.
  * Set to 'LOCAL_MOCK' to use localStorage fallback without backend.
  */
-const ENV_URL = (process.env as any).BACKEND_URL;
+const ENV_URL = import.meta.env.VITE_BACKEND_URL;
 let BASE_URL = localStorage.getItem('connect_api_url') || ENV_URL || 'http://localhost:3001';
 
 export class ApiService {
