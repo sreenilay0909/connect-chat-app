@@ -83,3 +83,19 @@ The backend exposes the following endpoints:
 - `GET /messages?u1=userId1&u2=userId2` - Get messages between users
 
 See `backend/README.md` for detailed API documentation.
+
+
+
+
+
+
+
+
+
+
+
+connect-admin    username
+eou8RaUNJNqGRn5I   password 
+
+
+mongodb+srv://<connect-admin>:<eou8RaUNJNqGRn5I>@cluster0.rjmijfs.mongodb.net/?appName=Cluster0
