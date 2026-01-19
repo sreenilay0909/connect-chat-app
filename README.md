@@ -2,7 +2,7 @@
 
 This contains everything you need to run your app locally with MongoDB integration.
 
-View your app in AI Studio: https://ai.studio/apps/temp/1
+View your app in :https://connect-chat-app-indol.vercel.app/
 
 ## Prerequisites
 
